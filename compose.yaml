@@ -1,0 +1,40 @@
+name: minio
+services:
+  minio:
+    container_name: minio
+    image: quay.io/minio/minio:latest
+    environment:
+      DOMAIN: ${DOMAIN}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BROWSER_REDIRECT_URL: ${MINIO_BROWSER_REDIRECT_URL}
+    expose:
+      - 9000
+      - 9001
+    volumes:
+      - "/s3:/data"
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+    command: ["server", "/data", "--console-address", ":9001"]
+
+  web:
+    container_name: web
+    image: nginx:stable-alpine
+    environment:
+      DOMAIN: ${DOMAIN}
+      SSL_CERT: ${SSL_CERT}
+      SSL_KEY: ${SSL_KEY}
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - "./ssl:/etc/ssl/myssl:ro"
+      - "./nginx/nginx.conf:/tmp/nginx.conf:ro"
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+    command:
+      - sh
+      - -c
+      - |
+        echo "Generate config nginx for domain ===> ${DOMAIN} <==="
+        envsubst '$$DOMAIN $$SSL_CERT $$SSL_KEY' < /tmp/nginx.conf > /etc/nginx/nginx.conf && exec nginx -g 'daemon off;'
